@@ -1,0 +1,222 @@
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --sunset-purple: 103, 65, 217;    /* Deep purple */
+  --sunset-pink: 236, 72, 153;      /* Hot pink */
+  --sunset-orange: 234, 88, 12;     /* Warm orange */
+  --sunset-yellow: 250, 204, 21;    /* Golden yellow */
+  --card-bg: rgba(255, 255, 255, 0.9);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --sunset-purple: 88, 28, 135;    /* Darker purple */
+    --sunset-pink: 157, 23, 77;      /* Darker pink */
+    --sunset-orange: 154, 52, 18;    /* Darker orange */
+    --sunset-yellow: 161, 98, 7;     /* Darker gold */
+    --card-bg: rgba(30, 41, 59, 0.9);
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+    45deg,
+    rgb(var(--sunset-purple)) 0%,
+    rgb(var(--sunset-pink)) 30%,
+    rgb(var(--sunset-orange)) 60%,
+    rgb(var(--sunset-yellow)) 100%
+  );
+  min-height: 100vh;
+  margin: 0;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Sun effect */
+body::before {
+  content: '';
+  position: fixed;
+  bottom: -20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60vh;
+  height: 60vh;
+  background: 
+    radial-gradient(
+      circle,
+      var(--sun-core) 0%,
+      var(--sun-glow) 50%,
+      transparent 70%
+    );
+  border-radius: 50%;
+  z-index: -2;
+  animation: sunrise 2s ease-out forwards;
+}
+
+/* Sun rays */
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70vh;
+  height: 70vh;
+  background: 
+    repeating-conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      transparent 20deg,
+      var(--sun-glow) 21deg,
+      transparent 22deg
+    );
+  z-index: -3;
+  animation: rays 60s linear infinite;
+}
+
+/* Clouds */
+.cloud {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  background: 
+    radial-gradient(circle at 20% 20%, var(--cloud-color) 0%, transparent 50%),
+    radial-gradient(circle at 80% 30%, var(--cloud-color) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, var(--cloud-color) 0%, transparent 30%),
+    radial-gradient(circle at 30% 70%, var(--cloud-color) 0%, transparent 45%),
+    radial-gradient(circle at 70% 80%, var(--cloud-color) 0%, transparent 35%);
+  z-index: -1;
+  animation: cloudFloat 20s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Animation keyframes */
+@keyframes slideIn {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sunrise {
+  0% { transform: translateY(100%) scale(1.5); opacity: 0.5; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes rays {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes cloudFloat {
+  0% { transform: translateX(-5%); }
+  50% { transform: translateX(5%); }
+  100% { transform: translateX(-5%); }
+}
+
+/* Task animations */
+.task-enter {
+  animation: slideIn 0.5s ease-out forwards;
+}
+
+.task-complete {
+  animation: pulse 0.5s ease-out;
+}
+
+/* Modern scrollbar styling */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(var(--background-start-rgb));
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
+/* Smooth transitions for dark mode */
+* {
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Better focus styles */
+*:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Modern form elements */
+input, textarea, select {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(4px);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  input, textarea, select {
+    background: rgba(30, 41, 59, 0.8);
+    color: white;
+  }
+}
+
+/* Better text selection */
+::selection {
+  background: rgba(59, 130, 246, 0.2);
+}
+
+/* Container styles */
+.container {
+  width: 100%;
+  max-width: 72rem; /* 1152px */
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* Card styles */
+.card {
+  background: var(--card-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 
+    0 4px 6px rgba(0, 0, 0, 0.05),
+    0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  animation: fadeIn 0.5s ease-out;
+}
+
+@media (prefers-color-scheme: dark) {
+  .card {
+    background: rgba(30, 41, 59, 0.9);
+  }
+}
