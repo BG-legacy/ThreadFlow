@@ -11,8 +11,8 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Copy all source files at once
-COPY . .
+# Copy backend source files
+COPY backend/*.c backend/*.h ./
 
 # Compile the application
 RUN gcc -c server.c task_queue.c worker.c websocket.c && \
