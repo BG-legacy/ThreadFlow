@@ -19,12 +19,12 @@ RUN gcc -c server.c task_queue.c worker.c websocket.c && \
     gcc -o server server.o task_queue.o worker.o websocket.o \
     -lmicrohttpd -lwebsockets -ljson-c -pthread
 
-# Default ports
-ENV HTTP_PORT=8081
+# Default ports - use PORT env var for primary port (Render requirement)
+ENV PORT=8081
 ENV WS_PORT=8082
 
 # Expose ports
-EXPOSE ${HTTP_PORT}
+EXPOSE ${PORT}
 EXPOSE ${WS_PORT}
 
 # Start command

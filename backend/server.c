@@ -188,7 +188,11 @@ static enum MHD_Result handle_request(void *cls, struct MHD_Connection *connecti
 // Use environment variables for ports if available
 static int get_port(const char* env_var, int default_port) {
     const char* port_str = getenv(env_var);
-    return port_str ? atoi(port_str) : default_port;
+    if (port_str) {
+        int port = atoi(port_str);
+        return port > 0 ? port : default_port;
+    }
+    return default_port;
 }
 
 int main() {
@@ -208,7 +212,8 @@ int main() {
     }
 
     // Get port numbers from environment or use defaults
-    int http_port = get_port("HTTP_PORT", 8081);
+    // Use PORT env var for HTTP (Render requirement)
+    int http_port = get_port("PORT", 8081);
     int ws_port = get_port("WS_PORT", 8082);
 
     // Initialize WebSocket server with more detailed error handling

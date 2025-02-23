@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: c-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    envVars:
+      - key: PORT
+        value: 8081
+      - key: WS_PORT
+        value: 8082 
