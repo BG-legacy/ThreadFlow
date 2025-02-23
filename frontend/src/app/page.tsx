@@ -11,12 +11,6 @@ interface Task {
   data: string;
 }
 
-interface TaskCompletionMessage {
-  type: 'task_complete';
-  task_id: string;
-  status: 'completed';
-}
-
 export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [newTask, setNewTask] = useState('');
@@ -149,6 +143,18 @@ export default function Home() {
             </button>
           </form>
         </div>
+
+        {error && (
+          <div className="mb-4 p-4 text-red-500 bg-red-100 rounded-lg">
+            {error}
+          </div>
+        )}
+        
+        {success && (
+          <div className="mb-4 p-4 text-green-500 bg-green-100 rounded-lg">
+            Task added successfully!
+          </div>
+        )}
 
         <div className="p-8 rounded-xl bg-gradient-to-br from-purple-600/30 via-pink-500/30 to-orange-500/30 backdrop-blur-lg border border-white/20">
           <h2 className="text-4xl font-bold mb-8 text-white">
