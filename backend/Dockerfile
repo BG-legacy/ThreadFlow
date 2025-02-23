@@ -11,14 +11,8 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Copy source files explicitly
-COPY server.c server.c
-COPY task_queue.c task_queue.c
-COPY worker.c worker.c
-COPY websocket.c websocket.c
-COPY task_queue.h task_queue.h
-COPY worker.h worker.h
-COPY websocket.h websocket.h
+# Copy all source files at once
+COPY . .
 
 # Compile the application
 RUN gcc -c server.c task_queue.c worker.c websocket.c && \
