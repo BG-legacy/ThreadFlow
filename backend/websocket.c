@@ -24,6 +24,18 @@ int ws_callback(struct lws *wsi, enum lws_callback_reasons reason,
     switch (reason) {
         case LWS_CALLBACK_ESTABLISHED:
             printf("[WEBSOCKET] Client connected\n");
+            
+            // Log connection details
+            char client_ip[100] = {0};
+            char client_name[100] = {0};
+            
+            lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi),
+                                  client_name, sizeof(client_name),
+                                  client_ip, sizeof(client_ip));
+                                  
+            printf("[WEBSOCKET] Client connected from IP: %s, Host: %s\n", 
+                   client_ip, client_name);
+            
             if (client_count < MAX_CLIENTS) {
                 ws_clients[client_count++] = wsi;
                 printf("[WEBSOCKET] Total clients: %d\n", client_count);
@@ -47,14 +59,53 @@ int ws_callback(struct lws *wsi, enum lws_callback_reasons reason,
 
         case LWS_CALLBACK_RECEIVE:
             printf("[WEBSOCKET] Received: %.*s\n", (int)len, (char *)in);
+            
+            // Echo back the message for testing
+            lws_callback_on_writable(wsi);
             break;
 
         case LWS_CALLBACK_SERVER_WRITEABLE:
-            // Handle writable events
+            // Send a ping response when writable
+            {
+                unsigned char buf[LWS_PRE + 64];
+                const char *msg = "{\"type\":\"pong\",\"timestamp\":%ld}";
+                int msg_len = snprintf((char *)&buf[LWS_PRE], sizeof(buf) - LWS_PRE, 
+                                     msg, (long)time(NULL));
+                
+                if (msg_len > 0) {
+                    int result = lws_write(wsi, &buf[LWS_PRE], msg_len, LWS_WRITE_TEXT);
+                    if (result < 0) {
+                        printf("[WEBSOCKET ERROR] Write failed: %d\n", result);
+                    } else {
+                        printf("[WEBSOCKET] Sent pong response\n");
+                    }
+                }
+            }
+            break;
+            
+        case LWS_CALLBACK_WSI_CREATE:
+            printf("[WEBSOCKET] New connection being established\n");
+            break;
+            
+        case LWS_CALLBACK_WSI_DESTROY:
+            printf("[WEBSOCKET] Connection being destroyed\n");
+            break;
+            
+        case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
+            printf("[WEBSOCKET] Filtering protocol connection\n");
+            break;
+            
+        case LWS_CALLBACK_PROTOCOL_INIT:
+            printf("[WEBSOCKET] Protocol initialized\n");
+            break;
+            
+        case LWS_CALLBACK_PROTOCOL_DESTROY:
+            printf("[WEBSOCKET] Protocol destroyed\n");
             break;
 
         default:
-            // Ignore other events
+            // Log other events for debugging
+            printf("[WEBSOCKET] Event: %d\n", reason);
             break;
     }
     return 0;

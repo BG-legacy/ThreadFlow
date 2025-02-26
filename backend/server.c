@@ -39,6 +39,15 @@ static struct lws_protocols protocols[] = {
     { NULL, NULL, 0, 0 }
 };
 
+// Mount configurations for WebSocket
+static const struct lws_http_mount mount_ws = {
+    .mountpoint = "/ws",
+    .mountpoint_len = 3,
+    .origin = "ws",
+    .origin_protocol = LWSMPRO_CALLBACK,
+    .mount_next = NULL
+};
+
 // Broadcast task completion to all WebSocket clients
 static void broadcast_task_completion(const char* task_id) {
     char buf[256];
@@ -177,9 +186,20 @@ static enum MHD_Result handle_request(void *cls, struct MHD_Connection *connecti
 
     // Health check endpoint
     if (strcmp(method, "GET") == 0 && strcmp(url, "/health") == 0) {
-        const char *health = "{\"status\":\"ok\",\"websocket_port\":%d,\"http_port\":%d,\"version\":\"1.0.0\",\"cors\":\"enabled\"}";
-        char buf[256];
-        snprintf(buf, sizeof(buf), health, ws_port, http_port);
+        const char *health = "{\"status\":\"ok\",\"websocket_port\":%d,\"http_port\":%d,\"version\":\"1.0.0\",\"cors\":\"enabled\",\"websocket_path\":\"/ws\",\"environment\":\"%s\",\"uptime\":%ld}";
+        char buf[512]; // Increased buffer size
+        
+        // Get uptime in seconds
+        static time_t start_time = 0;
+        if (start_time == 0) {
+            start_time = time(NULL);
+        }
+        time_t uptime = time(NULL) - start_time;
+        
+        // Determine environment
+        const char* env = getenv("RENDER_SERVICE_ID") ? "production" : "development";
+        
+        snprintf(buf, sizeof(buf), health, ws_port, http_port, env, uptime);
         
         response = MHD_create_response_from_buffer(strlen(buf), 
                                                  buf,
@@ -244,6 +264,17 @@ int main() {
         // In production, use the same port for both HTTP and WebSocket
         ws_port = http_port;
         printf("Using port %d for both HTTP and WebSocket\n", http_port);
+        
+        // Print environment variables for debugging
+        printf("Environment variables:\n");
+        printf("  RENDER_SERVICE_ID: %s\n", render_service_id ? render_service_id : "not set");
+        printf("  PORT: %d\n", http_port);
+        
+        // Check if we're behind a proxy
+        const char* forwarded_proto = getenv("X_FORWARDED_PROTO");
+        if (forwarded_proto) {
+            printf("  X_FORWARDED_PROTO: %s\n", forwarded_proto);
+        }
     }
 
     // Initialize WebSocket server with more detailed error handling
@@ -262,12 +293,24 @@ int main() {
     // Update vhost name to match deployment or use NULL for any host
     info.vhost_name = NULL;  // Allow connections from any host
     
+    // Add the WebSocket mount
+    info.mounts = &mount_ws;
+    
     // Add options for working behind a proxy (like Render)
     info.options = 
         LWS_SERVER_OPTION_HTTP_HEADERS_SECURITY_BEST_PRACTICES_ENFORCE |
         LWS_SERVER_OPTION_VALIDATE_UTF8 |
         LWS_SERVER_OPTION_EXPLICIT_VHOSTS |
         LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
+    
+    if (is_production) {
+        // Add options specifically for production/proxy environments
+        info.options |= LWS_SERVER_OPTION_ALLOW_NON_SSL_ON_SSL_PORT |
+                        LWS_SERVER_OPTION_ALLOW_LISTEN_SHARE;
+                        
+        // Set up for being behind a reverse proxy
+        info.options |= LWS_SERVER_OPTION_VHOST_UPG_STRICT_HOST_CHECK;
+    }
 
     // Create the context
     struct lws_context* ws_context = lws_create_context(&info);
