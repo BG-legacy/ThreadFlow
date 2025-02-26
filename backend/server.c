@@ -17,6 +17,8 @@
 static TaskQueue* task_queue;
 static volatile int shutdown_requested = 0;
 static Worker** workers = NULL;
+static int http_port;  // Added global variable
+static int ws_port;    // Added global variable
 
 // Function declarations
 static void handle_sigint(int sig);
@@ -173,6 +175,22 @@ static enum MHD_Result handle_request(void *cls, struct MHD_Connection *connecti
         return ret;
     }
 
+    // Health check endpoint
+    if (strcmp(method, "GET") == 0 && strcmp(url, "/health") == 0) {
+        const char *health = "{\"status\":\"ok\",\"websocket_port\":%d,\"http_port\":%d,\"version\":\"1.0.0\",\"cors\":\"enabled\"}";
+        char buf[256];
+        snprintf(buf, sizeof(buf), health, ws_port, http_port);
+        
+        response = MHD_create_response_from_buffer(strlen(buf), 
+                                                 buf,
+                                                 MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        MHD_add_response_header(response, "Access-Control-Allow-Origin", "*");
+        ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+        MHD_destroy_response(response);
+        return ret;
+    }
+
     // 404 Not Found for all other requests
     const char *not_found = "{\"error\":\"Not Found\"}";
     response = MHD_create_response_from_buffer(strlen(not_found), 
@@ -213,8 +231,8 @@ int main() {
 
     // Get port numbers from environment or use defaults
     // Use PORT env var for HTTP (Render requirement)
-    int http_port = get_port("PORT", 8081);
-    int ws_port = get_port("WS_PORT", 8082);
+    http_port = get_port("PORT", 8081);
+    ws_port = get_port("WS_PORT", 8082);
     
     // For Render deployment, we need to check if we're in production
     // and use the same port for both HTTP and WebSocket
@@ -225,6 +243,7 @@ int main() {
         printf("Running in production mode on Render\n");
         // In production, use the same port for both HTTP and WebSocket
         ws_port = http_port;
+        printf("Using port %d for both HTTP and WebSocket\n", http_port);
     }
 
     // Initialize WebSocket server with more detailed error handling
@@ -257,6 +276,21 @@ int main() {
         return 1;
     }
     set_ws_context(ws_context);
+    
+    // Print detailed information about the WebSocket configuration
+    printf("[WEBSOCKET] Configuration:\n");
+    printf("  - Port: %d\n", ws_port);
+    printf("  - Production mode: %s\n", is_production ? "Yes" : "No");
+    printf("  - Options: 0x%08X\n", (unsigned int)info.options);
+    
+    if (is_production) {
+        printf("[WEBSOCKET] Running in production mode on Render\n");
+        printf("[WEBSOCKET] Using same port as HTTP: %d\n", ws_port);
+        printf("[WEBSOCKET] For WebSocket connections, use: wss://threadflow.onrender.com\n");
+    } else {
+        printf("[WEBSOCKET] Running in development mode\n");
+        printf("[WEBSOCKET] For WebSocket connections, use: ws://localhost:%d\n", ws_port);
+    }
 
     printf("[WEBSOCKET] Server started on port %d\n", ws_port);
 
