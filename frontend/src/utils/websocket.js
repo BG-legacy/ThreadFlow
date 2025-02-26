@@ -18,8 +18,8 @@ const getApiUrl = () => {
 // For production, derive WebSocket URL from API URL
 const getWebSocketUrl = () => {
   if (isProduction) {
-    // Add explicit path for WebSocket connection
-    return 'wss://threadflow.onrender.com/ws';
+    // Use root path for WebSocket connection
+    return 'wss://threadflow.onrender.com';
   }
   return `ws://localhost:${WS_PORT}`;
 };
@@ -38,7 +38,7 @@ if (typeof window !== 'undefined') {
   console.log('[Config] Browser:', navigator.userAgent);
   console.log('[Config] Secure context:', window.isSecureContext);
   
-  // Check if the API is reachable
+  // Check if the API is reachable - use the correct API URL
   fetch(`${API_URL}/health`)
     .then(response => {
       console.log('[Config] API health check status:', response.status);
