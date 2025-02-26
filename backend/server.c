@@ -215,6 +215,17 @@ int main() {
     // Use PORT env var for HTTP (Render requirement)
     int http_port = get_port("PORT", 8081);
     int ws_port = get_port("WS_PORT", 8082);
+    
+    // For Render deployment, we need to check if we're in production
+    // and use the same port for both HTTP and WebSocket
+    const char* render_service_id = getenv("RENDER_SERVICE_ID");
+    bool is_production = render_service_id != NULL;
+    
+    if (is_production) {
+        printf("Running in production mode on Render\n");
+        // In production, use the same port for both HTTP and WebSocket
+        ws_port = http_port;
+    }
 
     // Initialize WebSocket server with more detailed error handling
     struct lws_context_creation_info info;
@@ -232,9 +243,12 @@ int main() {
     // Update vhost name to match deployment or use NULL for any host
     info.vhost_name = NULL;  // Allow connections from any host
     
+    // Add options for working behind a proxy (like Render)
     info.options = 
         LWS_SERVER_OPTION_HTTP_HEADERS_SECURITY_BEST_PRACTICES_ENFORCE |
-        LWS_SERVER_OPTION_VALIDATE_UTF8;
+        LWS_SERVER_OPTION_VALIDATE_UTF8 |
+        LWS_SERVER_OPTION_EXPLICIT_VHOSTS |
+        LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
 
     // Create the context
     struct lws_context* ws_context = lws_create_context(&info);
