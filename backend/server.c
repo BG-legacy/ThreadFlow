@@ -232,18 +232,6 @@ int main() {
     // Update vhost name to match deployment or use NULL for any host
     info.vhost_name = NULL;  // Allow connections from any host
     
-    // Add CORS headers for WebSocket
-    info.headers = (struct lws_protocol_vhost_options*)malloc(sizeof(struct lws_protocol_vhost_options));
-    if (!info.headers) {
-        fprintf(stderr, "Failed to allocate memory for headers\n");
-        return 1;
-    }
-    
-    // Set up CORS headers
-    info.headers->name = "access-control-allow-origin";
-    info.headers->value = "https://thread-flow.vercel.app";  // Your frontend URL
-    info.headers->next = NULL;
-    
     info.options = 
         LWS_SERVER_OPTION_HTTP_HEADERS_SECURITY_BEST_PRACTICES_ENFORCE |
         LWS_SERVER_OPTION_VALIDATE_UTF8;
@@ -305,11 +293,6 @@ int main() {
     
     // Cleanup
     if (daemon) MHD_stop_daemon(daemon);
-    
-    // Free the headers memory we allocated
-    if (info.headers) {
-        free(info.headers);
-    }
     
     lws_context_destroy(get_ws_context());
     destroy_worker_pool(workers, NUM_WORKERS);

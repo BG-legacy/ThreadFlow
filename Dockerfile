@@ -11,10 +11,14 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Copy backend source files
-COPY backend/*.c backend/*.h ./
+# Create backend directory
+RUN mkdir -p /app/backend
+
+# Copy backend source files to the backend directory
+COPY backend/*.c backend/*.h /app/backend/
 
 # Compile the application
+WORKDIR /app/backend
 RUN gcc -c server.c task_queue.c worker.c websocket.c && \
     gcc -o server server.o task_queue.o worker.o websocket.o \
     -lmicrohttpd -lwebsockets -ljson-c -pthread
