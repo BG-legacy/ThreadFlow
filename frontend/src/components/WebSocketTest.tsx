@@ -2,10 +2,23 @@ import { useEffect, useState } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { WS_URL, API_URL } from '@/utils/websocket';
 
+// Define a type for the server info
+interface ServerInfo {
+  status?: string;
+  websocket_port?: number;
+  http_port?: number;
+  version?: string;
+  cors?: string;
+  websocket_path?: string;
+  environment?: string;
+  uptime?: number;
+  error?: string;
+}
+
 export default function WebSocketTest() {
   const { socket, connectionStatus, connectionError, reconnectCount } = useWebSocket(WS_URL);
   const [lastPing, setLastPing] = useState<Date | null>(null);
-  const [serverInfo, setServerInfo] = useState<any>(null);
+  const [serverInfo, setServerInfo] = useState<ServerInfo | null>(null);
   const [isCheckingServer, setIsCheckingServer] = useState(false);
 
   // Check server health
@@ -34,7 +47,8 @@ export default function WebSocketTest() {
     };
 
     checkServerHealth();
-  }, [API_URL]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Remove API_URL from dependencies
 
   useEffect(() => {
     if (socket) {
@@ -108,18 +122,20 @@ export default function WebSocketTest() {
           </p>
         )}
         
-        {serverInfo && (
-          <div className="mt-4 p-4 bg-black/30 rounded-lg">
-            <h4 className="text-lg font-semibold text-white mb-2">Server Info:</h4>
-            {serverInfo.error ? (
-              <p className="text-red-300">Error: {serverInfo.error}</p>
-            ) : (
-              <pre className="text-sm text-white/70 overflow-auto">
-                {JSON.stringify(serverInfo, null, 2)}
-              </pre>
-            )}
-          </div>
-        )}
+        <div className="mt-4 p-4 bg-black/30 rounded-lg">
+          <h4 className="text-lg font-semibold text-white mb-2">Server Info:</h4>
+          {isCheckingServer ? (
+            <p className="text-white/70">Checking server status...</p>
+          ) : serverInfo?.error ? (
+            <p className="text-red-300">Error: {serverInfo.error}</p>
+          ) : serverInfo ? (
+            <pre className="text-sm text-white/70 overflow-auto">
+              {JSON.stringify(serverInfo, null, 2)}
+            </pre>
+          ) : (
+            <p className="text-white/70">No server information available</p>
+          )}
+        </div>
         
         <button
           onClick={handleManualReconnect}
