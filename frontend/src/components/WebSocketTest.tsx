@@ -49,6 +49,11 @@ export default function WebSocketTest() {
           </p>
         )}
         <p className="text-xl text-white/70">URL: {WS_URL}</p>
+        {process.env.NODE_ENV === 'development' && (
+          <p className="text-sm text-white/50 mt-1">
+            Using development URL. Set NEXT_PUBLIC_WEBSOCKET_URL in .env.local to override.
+          </p>
+        )}
         {lastPing && (
           <p className="text-xl text-white/70">
             Last Ping: {lastPing.toLocaleTimeString()}

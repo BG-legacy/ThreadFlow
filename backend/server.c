@@ -67,7 +67,7 @@ static enum MHD_Result handle_request(void *cls, struct MHD_Connection *connecti
     // Handle CORS preflight requests
     if (strcmp(method, "OPTIONS") == 0) {
         response = MHD_create_response_from_buffer(0, NULL, MHD_RESPMEM_PERSISTENT);
-        MHD_add_response_header(response, "Access-Control-Allow-Origin", "*");
+        MHD_add_response_header(response, "Access-Control-Allow-Origin", "https://thread-flow.vercel.app");
         MHD_add_response_header(response, "Access-Control-Allow-Methods", "POST, GET, OPTIONS");
         MHD_add_response_header(response, "Access-Control-Allow-Headers", "Content-Type");
         MHD_add_response_header(response, "Access-Control-Max-Age", "86400");
@@ -131,7 +131,7 @@ static enum MHD_Result handle_request(void *cls, struct MHD_Connection *connecti
                                                                  (void*)response_str,
                                                                  MHD_RESPMEM_MUST_COPY);
                         MHD_add_response_header(response, "Content-Type", "application/json");
-                        MHD_add_response_header(response, "Access-Control-Allow-Origin", "*");
+                        MHD_add_response_header(response, "Access-Control-Allow-Origin", "https://thread-flow.vercel.app");
                         ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
                         MHD_destroy_response(response);
                         json_object_put(response_obj);
@@ -142,7 +142,7 @@ static enum MHD_Result handle_request(void *cls, struct MHD_Connection *connecti
                                                                  (void*)error,
                                                                  MHD_RESPMEM_PERSISTENT);
                         MHD_add_response_header(response, "Content-Type", "application/json");
-                        MHD_add_response_header(response, "Access-Control-Allow-Origin", "*");
+                        MHD_add_response_header(response, "Access-Control-Allow-Origin", "https://thread-flow.vercel.app");
                         ret = MHD_queue_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, response);
                         MHD_destroy_response(response);
                     }
@@ -167,7 +167,7 @@ static enum MHD_Result handle_request(void *cls, struct MHD_Connection *connecti
                                                  buf,
                                                  MHD_RESPMEM_MUST_COPY);
         MHD_add_response_header(response, "Content-Type", "application/json");
-        MHD_add_response_header(response, "Access-Control-Allow-Origin", "*");
+        MHD_add_response_header(response, "Access-Control-Allow-Origin", "https://thread-flow.vercel.app");
         ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
         MHD_destroy_response(response);
         return ret;
@@ -179,7 +179,7 @@ static enum MHD_Result handle_request(void *cls, struct MHD_Connection *connecti
                                              (void*)not_found,
                                              MHD_RESPMEM_PERSISTENT);
     MHD_add_response_header(response, "Content-Type", "application/json");
-    MHD_add_response_header(response, "Access-Control-Allow-Origin", "*");
+    MHD_add_response_header(response, "Access-Control-Allow-Origin", "https://thread-flow.vercel.app");
     ret = MHD_queue_response(connection, MHD_HTTP_NOT_FOUND, response);
     MHD_destroy_response(response);
     return ret;
@@ -228,7 +228,22 @@ int main() {
 
     // Critical WebSocket options
     info.iface = NULL;  // Listen on all interfaces
-    info.vhost_name = "localhost";
+    
+    // Update vhost name to match deployment or use NULL for any host
+    info.vhost_name = NULL;  // Allow connections from any host
+    
+    // Add CORS headers for WebSocket
+    info.headers = (struct lws_protocol_vhost_options*)malloc(sizeof(struct lws_protocol_vhost_options));
+    if (!info.headers) {
+        fprintf(stderr, "Failed to allocate memory for headers\n");
+        return 1;
+    }
+    
+    // Set up CORS headers
+    info.headers->name = "access-control-allow-origin";
+    info.headers->value = "https://thread-flow.vercel.app";  // Your frontend URL
+    info.headers->next = NULL;
+    
     info.options = 
         LWS_SERVER_OPTION_HTTP_HEADERS_SECURITY_BEST_PRACTICES_ENFORCE |
         LWS_SERVER_OPTION_VALIDATE_UTF8;
@@ -275,19 +290,31 @@ int main() {
     printf("HTTP server running on port %d\n", http_port);
     printf("WebSocket server running on port %d\n", ws_port);
 
-    // Main event loop with signal handling
+    // Register signal handler for graceful shutdown
     signal(SIGINT, handle_sigint);
+    
+    printf("Press Ctrl+C to stop the server\n");
+    
+    // Main event loop
     while (!shutdown_requested) {
-        lws_service(get_ws_context(), 0);
-        usleep(100);
+        lws_service(get_ws_context(), 50);
+        usleep(10000);  // 10ms sleep to reduce CPU usage
     }
-
+    
+    printf("Shutting down server...\n");
+    
     // Cleanup
-    printf("\nShutting down servers...\n");
-    destroy_worker_pool(workers, NUM_WORKERS);
-    MHD_stop_daemon(daemon);
+    if (daemon) MHD_stop_daemon(daemon);
+    
+    // Free the headers memory we allocated
+    if (info.headers) {
+        free(info.headers);
+    }
+    
     lws_context_destroy(get_ws_context());
+    destroy_worker_pool(workers, NUM_WORKERS);
     queue_destroy(task_queue);
-
+    
+    printf("Server shutdown complete\n");
     return 0;
 } 
