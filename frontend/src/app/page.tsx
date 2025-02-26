@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { WS_URL } from '@/utils/websocket';
+import { WS_URL, API_URL } from '@/utils/websocket';
 
 interface Task {
   id: string;
@@ -65,7 +65,7 @@ export default function Home() {
     setSuccess(false);
 
     try {
-      const response = await fetch('http://localhost:8081/submit', {
+      const response = await fetch(`${API_URL}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: newTask, priority }),

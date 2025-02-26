@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { API_URL } from '@/utils/websocket';
 
 function TaskForm(props) {
   const [formData, setFormData] = useState({
@@ -15,7 +16,7 @@ function TaskForm(props) {
     setSuccess(false);
 
     try {
-      const response = await fetch('http://localhost:8081/submit', {
+      const response = await fetch(`${API_URL}/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
