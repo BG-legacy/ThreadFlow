@@ -1,6 +1,6 @@
 # ThreadFlow
 > A high-performance C backend with Next.js frontend, exploring the power of system programming
-![Screenshot 2025-02-23 at 3 58 31 PM](https://github.com/user-attachments/assets/5e200951-afee-496e-8c24-0b653553d06c)
+![Screenshot 2025-02-23 at 3 58 31 PM](https://github.com/user-attachments/assets/5e200951-afee-496e-8c24-0b653553d06c)
 
 
 ## 🎯 What is ThreadFlow?
@@ -19,7 +19,6 @@ I created ThreadFlow to dive deep into system programming and understand:
 ### Backend (C)
 The core server is built with:
 - `libmicrohttpd` for HTTP server capabilities
-- `libwebsockets` for WebSocket support
 - Custom thread pool implementation
 - Priority-based task queue system
 - Signal handling for graceful shutdown
@@ -27,15 +26,17 @@ The core server is built with:
 Key features:
 - Non-blocking I/O operations
 - Efficient thread management
-- Real-time WebSocket communication
+- RESTful API endpoints
 - Memory-efficient design patterns
+- Configurable task processing delay for visualization
 
 ### Frontend (Next.js)
 Modern web interface featuring:
-- Real-time updates via WebSocket
+- Efficient polling mechanism for updates
 - Server-side rendering for optimal performance
-- Clean, responsive UI
+- Clean, responsive UI with compact design
 - TurboPack for rapid development
+- Single-page layout with minimal scrolling
 
 ## 🚀 Getting Started
 
@@ -58,6 +59,11 @@ npm run dev
 bash
 docker-compose up --build
 
+### Environment Variables
+The application supports the following environment variables:
+- `PORT`: HTTP server port (default: 8081)
+- `TASK_PROCESSING_DELAY`: Delay in seconds for task processing (default: 5)
+
 ## 📚 Learning Highlights
 Through building ThreadFlow, I've gained hands-on experience with:
 - Thread synchronization primitives
@@ -75,15 +81,29 @@ Through building ThreadFlow, I've gained hands-on experience with:
 
 ### Network Layer
 - HTTP server on port 8081
-- WebSocket server on port 8082
-- Custom protocol for real-time communication
-- Efficient binary message handling
+- RESTful API for task submission and status updates
+- Efficient polling mechanism for task status
+- JSON-based communication
 
 ### Memory Management
 - Custom memory pool for frequent allocations
 - Careful tracking of allocated resources
 - Proper cleanup on shutdown
 - Valgrind-verified memory safety
+
+### UI Design
+- Compact single-page layout
+- Task monitoring with polling
+- Priority-based task submission
+- Visual progress indicators
+- Responsive design for all screen sizes
+
+## 🆕 Recent Updates
+- Added configurable task processing delay for better visualization
+- Implemented real-time progress updates during task processing
+- Redesigned UI for a more compact, single-page experience
+- Improved task monitoring with streamlined status indicators
+- Enhanced responsive layout for better mobile experience
 
 ## 🤝 Contributing
 Contributions are welcome! This project is meant to be a learning resource for anyone interested in:
@@ -97,6 +117,6 @@ MIT License - Feel free to use this code for learning and building your own proj
 
 ## 🙏 Acknowledgments
 - The C Programming Language (K&R) book
-- libmicrohttpd and libwebsockets communities
+- libmicrohttpd community
 - Next.js documentation and community
 - Various open-source C projects that inspired this work
