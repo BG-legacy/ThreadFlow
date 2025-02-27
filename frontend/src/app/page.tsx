@@ -124,6 +124,92 @@ export default function Home() {
           ThreadFlow
         </h1>
         
+        {/* System Visualization */}
+        <div className="mb-12 p-6 rounded-xl bg-gradient-to-br from-purple-600/20 via-pink-500/20 to-orange-500/20 backdrop-blur-lg border border-white/20">
+          <h2 className="text-3xl font-bold mb-6 text-white text-center">How It Works</h2>
+          
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-white">
+            {/* Client */}
+            <div className="bg-white/10 p-4 rounded-lg border border-white/20 w-full md:w-1/4">
+              <h3 className="text-xl font-semibold mb-2">Client</h3>
+              <div className="flex items-center justify-center h-24 relative">
+                <div className="absolute w-16 h-16 bg-purple-500/30 rounded-full animate-ping"></div>
+                <div className="absolute w-12 h-12 bg-purple-500/50 rounded-full"></div>
+                <span className="relative z-10">Frontend</span>
+              </div>
+              <p className="text-sm mt-2">Submits tasks and polls for updates</p>
+            </div>
+            
+            {/* Arrows */}
+            <div className="flex flex-col items-center w-full md:w-1/6">
+              <div className="hidden md:block w-full h-0.5 bg-white/30 relative">
+                <div className={`absolute top-0 left-0 h-full bg-green-400 transition-all duration-500 ${pollingStatus === 'polling' ? 'animate-pulse' : ''}`} style={{ width: '100%' }}></div>
+              </div>
+              <div className="md:hidden h-8 w-0.5 bg-white/30"></div>
+              <span className="text-xs text-white/70 my-1">HTTP Polling</span>
+              <div className="md:hidden h-8 w-0.5 bg-white/30"></div>
+              <div className="hidden md:block w-full h-0.5 bg-white/30"></div>
+            </div>
+            
+            {/* Server */}
+            <div className="bg-white/10 p-4 rounded-lg border border-white/20 w-full md:w-1/4">
+              <h3 className="text-xl font-semibold mb-2">Server</h3>
+              <div className="flex items-center justify-center h-24 relative">
+                <div className={`w-16 h-16 rounded-lg border-2 border-white/30 flex items-center justify-center ${pollingStatus === 'polling' ? 'border-green-400' : ''}`}>
+                  <div className={`w-4 h-4 rounded-full ${pollingStatus === 'polling' ? 'bg-green-400 animate-pulse' : 'bg-white/50'}`}></div>
+                </div>
+              </div>
+              <p className="text-sm mt-2">Processes tasks and tracks completion</p>
+            </div>
+            
+            {/* Arrows */}
+            <div className="flex flex-col items-center w-full md:w-1/6">
+              <div className="hidden md:block w-full h-0.5 bg-white/30 relative">
+                <div className={`absolute top-0 left-0 h-full bg-blue-400 transition-all duration-500`} style={{ width: `${tasks.length > 0 ? '100%' : '0%'}` }}></div>
+              </div>
+              <div className="md:hidden h-8 w-0.5 bg-white/30"></div>
+              <span className="text-xs text-white/70 my-1">Task Queue</span>
+              <div className="md:hidden h-8 w-0.5 bg-white/30"></div>
+              <div className="hidden md:block w-full h-0.5 bg-white/30"></div>
+            </div>
+            
+            {/* Worker */}
+            <div className="bg-white/10 p-4 rounded-lg border border-white/20 w-full md:w-1/4">
+              <h3 className="text-xl font-semibold mb-2">Worker</h3>
+              <div className="flex items-center justify-center h-24">
+                <div className="relative">
+                  <svg className={`w-16 h-16 ${tasks.length > 0 ? 'animate-spin' : ''}`} style={{ animationDuration: '3s' }} viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span className="absolute inset-0 flex items-center justify-center">{tasks.filter(t => t.status === 'pending').length}</span>
+                </div>
+              </div>
+              <p className="text-sm mt-2">Executes tasks in priority order</p>
+            </div>
+          </div>
+          
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+            <div className="bg-white/10 p-3 rounded-lg text-center">
+              <div className="text-2xl font-bold text-white">{tasks.length}</div>
+              <div className="text-xs text-white/70">Total Tasks</div>
+            </div>
+            <div className="bg-white/10 p-3 rounded-lg text-center">
+              <div className="text-2xl font-bold text-white">{tasks.filter(t => t.status === 'pending').length}</div>
+              <div className="text-xs text-white/70">Pending</div>
+            </div>
+            <div className="bg-white/10 p-3 rounded-lg text-center">
+              <div className="text-2xl font-bold text-white">{tasks.filter(t => t.status === 'completed').length}</div>
+              <div className="text-xs text-white/70">Completed</div>
+            </div>
+            <div className="bg-white/10 p-3 rounded-lg text-center">
+              <div className="text-2xl font-bold text-white">{retryCount}</div>
+              <div className="text-xs text-white/70">Retry Count</div>
+            </div>
+          </div>
+        </div>
+        
         <div className="mb-8 p-8 rounded-xl bg-gradient-to-br from-purple-600/30 via-pink-500/30 to-orange-500/30 backdrop-blur-lg border border-white/20">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -188,8 +274,11 @@ export default function Home() {
         )}
 
         <div className="mb-4 p-4 bg-white/10 rounded-lg text-white">
-          <p>Polling Status: <span className={pollingStatus === 'polling' ? 'text-green-400' : 'text-amber-400'}>{pollingStatus}</span></p>
-          {retryCount > 0 && <p>Retry Count: {retryCount}</p>}
+          <div className="flex items-center">
+            <div className={`w-3 h-3 rounded-full mr-2 ${pollingStatus === 'polling' ? 'bg-green-400 animate-pulse' : 'bg-amber-400'}`}></div>
+            <p>Polling Status: <span className={pollingStatus === 'polling' ? 'text-green-400' : 'text-amber-400'}>{pollingStatus}</span></p>
+            {retryCount > 0 && <p className="ml-4">Retry Count: {retryCount}</p>}
+          </div>
           <div className="mt-2">
             {pollingStatus === 'polling' ? (
               <button 
@@ -223,7 +312,7 @@ export default function Home() {
                 <div
                   key={task.id}
                   id={`task-${task.id}`}
-                  className={`p-6 rounded-xl border border-white/20 transition-all duration-300 ${
+                  className={`p-6 rounded-xl border border-white/20 transition-all duration-500 ${
                     task.status === 'completed' 
                       ? 'bg-white/10' 
                       : 'bg-white/5'
@@ -238,12 +327,37 @@ export default function Home() {
                         ? 'bg-green-500/20 text-white'
                         : 'bg-orange-500/20 text-white'
                     }`}>
-                      {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
+                      {task.status === 'completed' ? (
+                        <span className="flex items-center">
+                          <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                          </svg>
+                          Completed
+                        </span>
+                      ) : (
+                        <span className="flex items-center">
+                          <svg className="w-5 h-5 mr-1 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                          </svg>
+                          Pending
+                        </span>
+                      )}
                     </span>
                   </div>
-                  <p className="text-xl mt-3 text-white/70">
-                    Priority: {task.priority}
-                  </p>
+                  <div className="flex items-center mt-3 text-white/70">
+                    <div className="flex items-center mr-6">
+                      <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                      </svg>
+                      <span>Priority: {task.priority}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"></path>
+                      </svg>
+                      <span>ID: {task.id.split('_').pop()}</span>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
