@@ -13,6 +13,16 @@
 // Forward declaration for the add_completed_task function from server.c
 extern void add_completed_task(const char* task_id);
 
+// Function to get processing delay from environment variable or use default
+static int get_processing_delay() {
+    const char* delay_str = getenv("TASK_PROCESSING_DELAY");
+    if (delay_str) {
+        int delay = atoi(delay_str);
+        return delay > 0 ? delay : 5; // Minimum 5 seconds if specified
+    }
+    return 5; // Default 5 seconds
+}
+
 // Function to process a task
 static void process_task(struct json_object* task) {
     // Extract task ID
@@ -30,10 +40,32 @@ static void process_task(struct json_object* task) {
         return;
     }
     
-    // Simulate processing by sleeping
-    int sleep_time = rand() % 3 + 1;  // 1-3 seconds
-    printf("[WORKER] Processing task %s for %d seconds...\n", task_id, sleep_time);
-    sleep(sleep_time);
+    // Extract priority
+    struct json_object* priority_obj;
+    int priority = 1;
+    if (json_object_object_get_ex(task, "priority", &priority_obj)) {
+        priority = json_object_get_int(priority_obj);
+    }
+    
+    // Get base processing delay
+    int base_delay = get_processing_delay();
+    
+    // Calculate sleep time based on priority (higher priority = faster processing)
+    int sleep_time = base_delay;
+    if (priority > 1) {
+        sleep_time = base_delay / priority;
+        if (sleep_time < 2) sleep_time = 2; // Minimum 2 seconds
+    }
+    
+    printf("[WORKER] Processing task %s (priority: %d) for %d seconds...\n", 
+           task_id, priority, sleep_time);
+    
+    // Simulate processing with progress updates
+    for (int i = 1; i <= sleep_time; i++) {
+        sleep(1);
+        printf("[WORKER] Task %s: %d/%d seconds completed (%.1f%%)\n", 
+               task_id, i, sleep_time, (float)i/sleep_time * 100.0);
+    }
     
     // Update task status to completed
     json_object_object_add(task, "status", json_object_new_string("completed"));
@@ -56,9 +88,13 @@ static void* worker_thread(void* arg) {
         if (task) {
             process_task(task);
             json_object_put(task);
+            
+            // Add a small delay between tasks to make it easier to observe
+            printf("[WORKER] Worker %d waiting for next task...\n", worker->worker_id);
+            sleep(1);
         } else {
             // Small sleep to prevent busy-waiting
-            usleep(100000); // 100ms sleep
+            usleep(500000); // 500ms sleep
         }
     }
     

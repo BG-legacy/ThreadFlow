@@ -9,4 +9,5 @@ services:
       - "${WS_PORT:-8082}:8082"
     environment:
       - PORT=8081
-      - WS_PORT=8082 
+      - WS_PORT=8082
+      - TASK_PROCESSING_DELAY=10  # Set task processing delay to 10 seconds 
