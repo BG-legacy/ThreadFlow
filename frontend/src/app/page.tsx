@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePolling } from '@/hooks/usePolling';
 import { API_URL } from '@/utils/websocket';
-import Link from 'next/link';
+import TaskMonitor from '@/components/WebSocketTest';
 
 interface Task {
   id: string;
@@ -21,13 +21,9 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { 
-    status: pollingStatus, 
-    error: pollingError, 
-    retryCount, 
     completedTasks,
     startPolling,
-    stopPolling,
-    resetPolling
+    stopPolling
   } = usePolling();
 
   // Handle completed tasks from polling
@@ -121,102 +117,13 @@ export default function Home() {
   return (
     <main className="min-h-screen py-12 px-4">
       <div className="container">
-        <div className="flex justify-between items-center mb-12">
-          <h1 className="text-7xl font-bold font-geist-sans text-center text-white">
-            ThreadFlow
-          </h1>
-          <Link 
-            href="/monitor" 
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
-          >
-            Task Monitor
-          </Link>
-        </div>
+        <h1 className="text-7xl font-bold mb-8 font-geist-sans text-center text-white">
+          ThreadFlow
+        </h1>
         
-        {/* System Visualization */}
-        <div className="mb-12 p-6 rounded-xl bg-gradient-to-br from-purple-600/20 via-pink-500/20 to-orange-500/20 backdrop-blur-lg border border-white/20">
-          <h2 className="text-3xl font-bold mb-6 text-white text-center">How It Works</h2>
-          
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-white">
-            {/* Client */}
-            <div className="bg-white/10 p-4 rounded-lg border border-white/20 w-full md:w-1/4">
-              <h3 className="text-xl font-semibold mb-2">Client</h3>
-              <div className="flex items-center justify-center h-24 relative">
-                <div className="absolute w-16 h-16 bg-purple-500/30 rounded-full animate-ping"></div>
-                <div className="absolute w-12 h-12 bg-purple-500/50 rounded-full"></div>
-                <span className="relative z-10">Frontend</span>
-              </div>
-              <p className="text-sm mt-2">Submits tasks and polls for updates</p>
-            </div>
-            
-            {/* Arrows */}
-            <div className="flex flex-col items-center w-full md:w-1/6">
-              <div className="hidden md:block w-full h-0.5 bg-white/30 relative">
-                <div className={`absolute top-0 left-0 h-full bg-green-400 transition-all duration-500 ${pollingStatus === 'polling' ? 'animate-pulse' : ''}`} style={{ width: '100%' }}></div>
-              </div>
-              <div className="md:hidden h-8 w-0.5 bg-white/30"></div>
-              <span className="text-xs text-white/70 my-1">HTTP Polling</span>
-              <div className="md:hidden h-8 w-0.5 bg-white/30"></div>
-              <div className="hidden md:block w-full h-0.5 bg-white/30"></div>
-            </div>
-            
-            {/* Server */}
-            <div className="bg-white/10 p-4 rounded-lg border border-white/20 w-full md:w-1/4">
-              <h3 className="text-xl font-semibold mb-2">Server</h3>
-              <div className="flex items-center justify-center h-24 relative">
-                <div className={`w-16 h-16 rounded-lg border-2 border-white/30 flex items-center justify-center ${pollingStatus === 'polling' ? 'border-green-400' : ''}`}>
-                  <div className={`w-4 h-4 rounded-full ${pollingStatus === 'polling' ? 'bg-green-400 animate-pulse' : 'bg-white/50'}`}></div>
-                </div>
-              </div>
-              <p className="text-sm mt-2">Processes tasks and tracks completion</p>
-            </div>
-            
-            {/* Arrows */}
-            <div className="flex flex-col items-center w-full md:w-1/6">
-              <div className="hidden md:block w-full h-0.5 bg-white/30 relative">
-                <div className={`absolute top-0 left-0 h-full bg-blue-400 transition-all duration-500`} style={{ width: `${tasks.length > 0 ? '100%' : '0%'}` }}></div>
-              </div>
-              <div className="md:hidden h-8 w-0.5 bg-white/30"></div>
-              <span className="text-xs text-white/70 my-1">Task Queue</span>
-              <div className="md:hidden h-8 w-0.5 bg-white/30"></div>
-              <div className="hidden md:block w-full h-0.5 bg-white/30"></div>
-            </div>
-            
-            {/* Worker */}
-            <div className="bg-white/10 p-4 rounded-lg border border-white/20 w-full md:w-1/4">
-              <h3 className="text-xl font-semibold mb-2">Worker</h3>
-              <div className="flex items-center justify-center h-24">
-                <div className="relative">
-                  <svg className={`w-16 h-16 ${tasks.length > 0 ? 'animate-spin' : ''}`} style={{ animationDuration: '3s' }} viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span className="absolute inset-0 flex items-center justify-center">{tasks.filter(t => t.status === 'pending').length}</span>
-                </div>
-              </div>
-              <p className="text-sm mt-2">Executes tasks in priority order</p>
-            </div>
-          </div>
-          
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-            <div className="bg-white/10 p-3 rounded-lg text-center">
-              <div className="text-2xl font-bold text-white">{tasks.length}</div>
-              <div className="text-xs text-white/70">Total Tasks</div>
-            </div>
-            <div className="bg-white/10 p-3 rounded-lg text-center">
-              <div className="text-2xl font-bold text-white">{tasks.filter(t => t.status === 'pending').length}</div>
-              <div className="text-xs text-white/70">Pending</div>
-            </div>
-            <div className="bg-white/10 p-3 rounded-lg text-center">
-              <div className="text-2xl font-bold text-white">{tasks.filter(t => t.status === 'completed').length}</div>
-              <div className="text-xs text-white/70">Completed</div>
-            </div>
-            <div className="bg-white/10 p-3 rounded-lg text-center">
-              <div className="text-2xl font-bold text-white">{retryCount}</div>
-              <div className="text-xs text-white/70">Retry Count</div>
-            </div>
-          </div>
+        {/* Task Monitor */}
+        <div className="mb-8">
+          <TaskMonitor />
         </div>
         
         <div className="mb-8 p-8 rounded-xl bg-gradient-to-br from-purple-600/30 via-pink-500/30 to-orange-500/30 backdrop-blur-lg border border-white/20">
@@ -266,46 +173,9 @@ export default function Home() {
         
         {success && (
           <div className="mb-4 p-4 text-green-500 bg-green-100 rounded-lg">
-            Task added successfully! Check the Task Monitor for updates.
+            Task added successfully!
           </div>
         )}
-
-        {pollingError && (
-          <div className="mb-4 p-4 text-amber-500 bg-amber-100 rounded-lg">
-            Polling error: {pollingError}
-            <button 
-              onClick={resetPolling}
-              className="ml-4 px-3 py-1 bg-amber-200 rounded-md hover:bg-amber-300 transition-colors"
-            >
-              Retry
-            </button>
-          </div>
-        )}
-
-        <div className="mb-4 p-4 bg-white/10 rounded-lg text-white">
-          <div className="flex items-center">
-            <div className={`w-3 h-3 rounded-full mr-2 ${pollingStatus === 'polling' ? 'bg-green-400 animate-pulse' : 'bg-amber-400'}`}></div>
-            <p>Polling Status: <span className={pollingStatus === 'polling' ? 'text-green-400' : 'text-amber-400'}>{pollingStatus}</span></p>
-            {retryCount > 0 && <p className="ml-4">Retry Count: {retryCount}</p>}
-          </div>
-          <div className="mt-2">
-            {pollingStatus === 'polling' ? (
-              <button 
-                onClick={stopPolling}
-                className="px-3 py-1 bg-white/20 rounded-md hover:bg-white/30 transition-colors"
-              >
-                Pause Polling
-              </button>
-            ) : (
-              <button 
-                onClick={startPolling}
-                className="px-3 py-1 bg-white/20 rounded-md hover:bg-white/30 transition-colors"
-              >
-                Resume Polling
-              </button>
-            )}
-          </div>
-        </div>
 
         <div className="p-8 rounded-xl bg-gradient-to-br from-purple-600/30 via-pink-500/30 to-orange-500/30 backdrop-blur-lg border border-white/20">
           <h2 className="text-4xl font-bold mb-8 text-white">
