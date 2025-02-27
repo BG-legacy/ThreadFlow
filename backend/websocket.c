@@ -36,6 +36,23 @@ int ws_callback(struct lws *wsi, enum lws_callback_reasons reason,
             printf("[WEBSOCKET] Client connected from IP: %s, Host: %s\n", 
                    client_ip, client_name);
             
+            // Check if we're behind a proxy
+            const char* forwarded_for = lws_get_header_simple(wsi, "X-Forwarded-For");
+            if (forwarded_for) {
+                printf("[WEBSOCKET] X-Forwarded-For: %s\n", forwarded_for);
+            }
+            
+            // Check the origin
+            const char* origin = lws_get_header_simple(wsi, "Origin");
+            if (origin) {
+                printf("[WEBSOCKET] Origin: %s\n", origin);
+                
+                // Accept connections from Vercel frontend
+                if (strstr(origin, "thread-flow.vercel.app") != NULL) {
+                    printf("[WEBSOCKET] Accepted connection from Vercel frontend\n");
+                }
+            }
+            
             if (client_count < MAX_CLIENTS) {
                 ws_clients[client_count++] = wsi;
                 printf("[WEBSOCKET] Total clients: %d\n", client_count);
