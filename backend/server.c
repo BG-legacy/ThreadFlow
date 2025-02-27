@@ -293,8 +293,8 @@ int main() {
     // Update vhost name to match deployment or use NULL for any host
     info.vhost_name = NULL;  // Allow connections from any host
     
-    // Add the WebSocket mount
-    info.mounts = &mount_ws;
+    // Remove the WebSocket mount to allow connections at the root path
+    // info.mounts = &mount_ws;
     
     // Add options for working behind a proxy (like Render)
     info.options = 
