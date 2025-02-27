@@ -15,6 +15,14 @@ interface PollingStatus {
   lastKnownTaskId: string | null;
 }
 
+// Define an interface for the poller object returned by createTaskPoller
+interface TaskPoller {
+  start: () => void;
+  stop: () => void;
+  reset: () => void;
+  getStatus: () => PollingStatus;
+}
+
 interface UsePollingReturn {
   status: 'idle' | 'polling' | 'error';
   error: string | null;
@@ -30,7 +38,7 @@ export function usePolling(interval?: number): UsePollingReturn {
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
-  const [poller, setPoller] = useState<any>(null);
+  const [poller, setPoller] = useState<TaskPoller | null>(null);
 
   useEffect(() => {
     // Create the poller
@@ -51,7 +59,7 @@ export function usePolling(interval?: number): UsePollingReturn {
       setStatus('error');
     };
 
-    const taskPoller = createTaskPoller(handleTaskCompleted, handleError, interval);
+    const taskPoller = createTaskPoller(handleTaskCompleted, handleError, interval) as TaskPoller;
     setPoller(taskPoller);
 
     // Cleanup on unmount

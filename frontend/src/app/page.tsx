@@ -72,7 +72,7 @@ export default function Home() {
     return () => {
       stopPolling();
     };
-  }, []);
+  }, [startPolling, stopPolling]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
