@@ -322,8 +322,9 @@ int main() {
         // Disable strict SSL checking in development
         info.options |= LWS_SERVER_OPTION_PEER_CERT_NOT_REQUIRED;
         
-        // Log all WebSocket events for debugging
-        info.log_level = 7; // Maximum logging
+        // Set debug level using the proper API instead of log_level field
+        lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO | LLL_DEBUG, NULL);
+        printf("[WEBSOCKET] Set maximum logging level\n");
     }
 
     // Create the context
