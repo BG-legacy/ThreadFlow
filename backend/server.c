@@ -290,8 +290,13 @@ int main() {
     // Critical WebSocket options
     info.iface = NULL;  // Listen on all interfaces
     
-    // Update vhost name to match deployment or use NULL for any host
-    info.vhost_name = NULL;  // Allow connections from any host
+    // Update vhost name to match deployment URL
+    if (is_production) {
+        info.vhost_name = "threadflow.onrender.com";  // Set to match the Render domain
+        printf("[WEBSOCKET] Setting vhost to: %s\n", info.vhost_name);
+    } else {
+        info.vhost_name = NULL;  // Allow connections from any host in development
+    }
     
     // Remove the WebSocket mount to allow connections at the root path
     // info.mounts = &mount_ws;
@@ -310,6 +315,15 @@ int main() {
                         
         // Set up for being behind a reverse proxy
         info.options |= LWS_SERVER_OPTION_VHOST_UPG_STRICT_HOST_CHECK;
+        
+        // Additional options for Render's proxy setup
+        info.options |= LWS_SERVER_OPTION_HTTP_HEADERS_SECURITY_BEST_PRACTICES_ENFORCE;
+        
+        // Disable strict SSL checking in development
+        info.options |= LWS_SERVER_OPTION_PEER_CERT_NOT_REQUIRED;
+        
+        // Log all WebSocket events for debugging
+        info.log_level = 7; // Maximum logging
     }
 
     // Create the context
@@ -330,6 +344,13 @@ int main() {
         printf("[WEBSOCKET] Running in production mode on Render\n");
         printf("[WEBSOCKET] Using same port as HTTP: %d\n", ws_port);
         printf("[WEBSOCKET] For WebSocket connections, use: wss://threadflow.onrender.com\n");
+        printf("[WEBSOCKET] Accepting connections from origin: https://thread-flow.vercel.app\n");
+        
+        // Add additional protocol information for debugging
+        printf("[WEBSOCKET] Protocols configured:\n");
+        for (int i = 0; protocols[i].name != NULL; i++) {
+            printf("  - %s\n", protocols[i].name);
+        }
     } else {
         printf("[WEBSOCKET] Running in development mode\n");
         printf("[WEBSOCKET] For WebSocket connections, use: ws://localhost:%d\n", ws_port);
