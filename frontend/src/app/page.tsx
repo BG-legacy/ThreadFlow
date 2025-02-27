@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { WS_URL, API_URL } from '@/utils/websocket';
+import { usePolling } from '@/hooks/usePolling';
+import { API_URL } from '@/utils/websocket';
 
 interface Task {
   id: string;
@@ -17,52 +17,68 @@ export default function Home() {
   const [priority, setPriority] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { socket } = useWebSocket(WS_URL);
+  const { 
+    status: pollingStatus, 
+    error: pollingError, 
+    retryCount, 
+    completedTasks,
+    startPolling,
+    stopPolling,
+    resetPolling
+  } = usePolling();
 
+  // Handle completed tasks from polling
   useEffect(() => {
-    if (socket) {
-      socket.onmessage = (event) => {
-        console.log('Received WebSocket message:', event.data);
-        try {
-          const data = JSON.parse(event.data);
-          console.log('Parsed message:', data);
+    if (completedTasks && completedTasks.length > 0) {
+      console.log('Received completed tasks:', completedTasks);
+      
+      setTasks(prev => {
+        const updatedTasks = [...prev];
+        
+        completedTasks.forEach(completedTask => {
+          const taskIndex = updatedTasks.findIndex(t => t.id === completedTask.id);
           
-          if (data.type === 'task_complete') {
-            console.log('Updating task status:', data.task_id);
-            setTasks(prev => {
-              const updated = prev.map(task => 
-                task.id === data.task_id 
-                  ? { ...task, status: 'completed' as const } 
-                  : task
-              );
-              console.log('Updated tasks:', updated);
-              return updated;
-            });
+          if (taskIndex !== -1) {
+            updatedTasks[taskIndex] = { 
+              ...updatedTasks[taskIndex], 
+              status: 'completed' as const 
+            };
             
-            // Move notification inside the setTasks callback
-            const completedTask = tasks.find(t => t.id === data.task_id);
-            if (completedTask && "Notification" in window) {
+            // Show notification for completed task
+            if ("Notification" in window) {
               Notification.requestPermission().then(permission => {
                 if (permission === "granted") {
                   new Notification('Task Completed', {
-                    body: `Task "${completedTask.data}" has been completed!`
+                    body: `Task "${updatedTasks[taskIndex].data}" has been completed!`
                   });
                 }
               });
             }
           }
-        } catch (error) {
-          console.error('Error processing WebSocket message:', error);
-        }
-      };
+        });
+        
+        console.log('Updated tasks:', updatedTasks);
+        return updatedTasks;
+      });
     }
-  }, [socket, tasks]);
+  }, [completedTasks]);
+
+  // Start polling when component mounts
+  useEffect(() => {
+    startPolling();
+    
+    return () => {
+      stopPolling();
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(false);
+    setIsSubmitting(true);
 
     try {
       const response = await fetch(`${API_URL}/submit`, {
@@ -96,6 +112,8 @@ export default function Home() {
       }
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to submit task');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -137,9 +155,10 @@ export default function Home() {
             
             <button
               type="submit"
-              className="w-full px-6 py-4 text-xl font-medium bg-white/20 hover:bg-white/30 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200"
+              disabled={isSubmitting}
+              className="w-full px-6 py-4 text-xl font-medium bg-white/20 hover:bg-white/30 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Add Thread
+              {isSubmitting ? 'Adding Thread...' : 'Add Thread'}
             </button>
           </form>
         </div>
@@ -152,9 +171,43 @@ export default function Home() {
         
         {success && (
           <div className="mb-4 p-4 text-green-500 bg-green-100 rounded-lg">
-            Task added successfully!
+            Task added successfully! Check the Task Monitor for updates.
           </div>
         )}
+
+        {pollingError && (
+          <div className="mb-4 p-4 text-amber-500 bg-amber-100 rounded-lg">
+            Polling error: {pollingError}
+            <button 
+              onClick={resetPolling}
+              className="ml-4 px-3 py-1 bg-amber-200 rounded-md hover:bg-amber-300 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        <div className="mb-4 p-4 bg-white/10 rounded-lg text-white">
+          <p>Polling Status: <span className={pollingStatus === 'polling' ? 'text-green-400' : 'text-amber-400'}>{pollingStatus}</span></p>
+          {retryCount > 0 && <p>Retry Count: {retryCount}</p>}
+          <div className="mt-2">
+            {pollingStatus === 'polling' ? (
+              <button 
+                onClick={stopPolling}
+                className="px-3 py-1 bg-white/20 rounded-md hover:bg-white/30 transition-colors"
+              >
+                Pause Polling
+              </button>
+            ) : (
+              <button 
+                onClick={startPolling}
+                className="px-3 py-1 bg-white/20 rounded-md hover:bg-white/30 transition-colors"
+              >
+                Resume Polling
+              </button>
+            )}
+          </div>
+        </div>
 
         <div className="p-8 rounded-xl bg-gradient-to-br from-purple-600/30 via-pink-500/30 to-orange-500/30 backdrop-blur-lg border border-white/20">
           <h2 className="text-4xl font-bold mb-8 text-white">

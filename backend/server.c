@@ -1,6 +1,5 @@
 #include <sys/types.h>
 #include <microhttpd.h>
-#include <libwebsockets.h>
 #include <json-c/json.h>
 #include <string.h>
 #include <signal.h>
@@ -8,7 +7,6 @@
 #include <time.h>    // Add this for time()
 #include "task_queue.h"
 #include "worker.h"
-#include "websocket.h"  // Fixed include statement
 
 #define MAX_CLIENTS 100
 #define NUM_WORKERS 2  // Number of worker threads to create
@@ -18,7 +16,6 @@ static TaskQueue* task_queue;
 static volatile int shutdown_requested = 0;
 static Worker** workers = NULL;
 static int http_port;  // Added global variable
-static int ws_port;    // Added global variable
 
 // Function declarations
 static void handle_sigint(int sig);
@@ -28,34 +25,30 @@ static void handle_sigint(int sig) {
     shutdown_requested = 1;
 }
 
-// WebSocket protocol definition
-static struct lws_protocols protocols[] = {
-    {
-        "task-protocol",
-        ws_callback,
-        0,
-        0,
-    },
-    { NULL, NULL, 0, 0 }
-};
+// Store completed tasks for polling
+#define MAX_COMPLETED_TASKS 100
+static struct {
+    char task_id[32];
+    time_t completion_time;
+} completed_tasks[MAX_COMPLETED_TASKS];
+static int completed_task_count = 0;
+static int completed_task_index = 0;
 
-// Mount configurations for WebSocket
-static const struct lws_http_mount mount_ws = {
-    .mountpoint = "/ws",
-    .mountpoint_len = 3,
-    .origin = "ws",
-    .origin_protocol = LWSMPRO_CALLBACK,
-    .mount_next = NULL
-};
-
-// Broadcast task completion to all WebSocket clients
-static void broadcast_task_completion(const char* task_id) {
-    char buf[256];
-    snprintf(buf, sizeof(buf), 
-             "{\"type\":\"task_complete\",\"task_id\":\"%s\",\"status\":\"completed\"}", 
-             task_id);
+// Add task to completed tasks list instead of broadcasting
+static void add_completed_task(const char* task_id) {
+    time_t now = time(NULL);
     
-    broadcast_to_clients(buf, strlen(buf));
+    // Add to circular buffer
+    strncpy(completed_tasks[completed_task_index].task_id, task_id, 31);
+    completed_tasks[completed_task_index].task_id[31] = '\0';
+    completed_tasks[completed_task_index].completion_time = now;
+    
+    completed_task_index = (completed_task_index + 1) % MAX_COMPLETED_TASKS;
+    if (completed_task_count < MAX_COMPLETED_TASKS) {
+        completed_task_count++;
+    }
+    
+    printf("[SERVER] Task completed: %s\n", task_id);
 }
 
 // HTTP request handler
@@ -186,7 +179,7 @@ static enum MHD_Result handle_request(void *cls, struct MHD_Connection *connecti
 
     // Health check endpoint
     if (strcmp(method, "GET") == 0 && strcmp(url, "/health") == 0) {
-        const char *health = "{\"status\":\"ok\",\"websocket_port\":%d,\"http_port\":%d,\"version\":\"1.0.0\",\"cors\":\"enabled\",\"websocket_path\":\"/ws\",\"environment\":\"%s\",\"uptime\":%ld}";
+        const char *health = "{\"status\":\"ok\",\"http_port\":%d,\"version\":\"1.0.0\",\"cors\":\"enabled\",\"environment\":\"%s\",\"uptime\":%ld}";
         char buf[512]; // Increased buffer size
         
         // Get uptime in seconds
@@ -199,7 +192,7 @@ static enum MHD_Result handle_request(void *cls, struct MHD_Connection *connecti
         // Determine environment
         const char* env = getenv("RENDER_SERVICE_ID") ? "production" : "development";
         
-        snprintf(buf, sizeof(buf), health, ws_port, http_port, env, uptime);
+        snprintf(buf, sizeof(buf), health, http_port, env, uptime);
         
         response = MHD_create_response_from_buffer(strlen(buf), 
                                                  buf,
@@ -208,6 +201,50 @@ static enum MHD_Result handle_request(void *cls, struct MHD_Connection *connecti
         MHD_add_response_header(response, "Access-Control-Allow-Origin", "*");
         ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
         MHD_destroy_response(response);
+        return ret;
+    }
+
+    // New endpoint for polling completed tasks
+    if (strcmp(method, "GET") == 0 && strcmp(url, "/completed-tasks") == 0) {
+        // Create JSON array of completed tasks
+        struct json_object *tasks_array = json_object_new_array();
+        
+        // Get the 'since' parameter if provided
+        const char *since_str = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "since");
+        time_t since_time = 0;
+        if (since_str) {
+            since_time = (time_t)atol(since_str);
+        }
+        
+        // Add completed tasks to the array
+        for (int i = 0; i < completed_task_count; i++) {
+            int idx = (completed_task_index - 1 - i + MAX_COMPLETED_TASKS) % MAX_COMPLETED_TASKS;
+            
+            // Skip tasks completed before the 'since' time
+            if (since_time > 0 && completed_tasks[idx].completion_time <= since_time) {
+                continue;
+            }
+            
+            struct json_object *task = json_object_new_object();
+            json_object_object_add(task, "task_id", json_object_new_string(completed_tasks[idx].task_id));
+            json_object_object_add(task, "completion_time", json_object_new_int64(completed_tasks[idx].completion_time));
+            json_object_array_add(tasks_array, task);
+        }
+        
+        // Create response object
+        struct json_object *response_obj = json_object_new_object();
+        json_object_object_add(response_obj, "completed_tasks", tasks_array);
+        json_object_object_add(response_obj, "server_time", json_object_new_int64(time(NULL)));
+        
+        const char *response_str = json_object_to_json_string(response_obj);
+        response = MHD_create_response_from_buffer(strlen(response_str), 
+                                                 (void*)response_str,
+                                                 MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        MHD_add_response_header(response, "Access-Control-Allow-Origin", "https://thread-flow.vercel.app");
+        ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+        MHD_destroy_response(response);
+        json_object_put(response_obj);
         return ret;
     }
 
@@ -252,7 +289,6 @@ int main() {
     // Get port numbers from environment or use defaults
     // Use PORT env var for HTTP (Render requirement)
     http_port = get_port("PORT", 8081);
-    ws_port = get_port("WS_PORT", 8082);
     
     // For Render deployment, we need to check if we're in production
     // and use the same port for both HTTP and WebSocket
@@ -261,9 +297,8 @@ int main() {
     
     if (is_production) {
         printf("Running in production mode on Render\n");
-        // In production, use the same port for both HTTP and WebSocket
-        ws_port = http_port;
-        printf("Using port %d for both HTTP and WebSocket\n", http_port);
+        // No need to set WebSocket port anymore
+        printf("Using HTTP port %d\n", http_port);
         
         // Print environment variables for debugging
         printf("Environment variables:\n");
@@ -276,88 +311,6 @@ int main() {
             printf("  X_FORWARDED_PROTO: %s\n", forwarded_proto);
         }
     }
-
-    // Initialize WebSocket server with more detailed error handling
-    struct lws_context_creation_info info;
-    memset(&info, 0, sizeof info);
-
-    // Basic server options
-    info.port = ws_port;
-    info.protocols = protocols;
-    info.gid = -1;
-    info.uid = -1;
-
-    // Critical WebSocket options
-    info.iface = NULL;  // Listen on all interfaces
-    
-    // Update vhost name to match deployment URL
-    if (is_production) {
-        info.vhost_name = "threadflow.onrender.com";  // Set to match the Render domain
-        printf("[WEBSOCKET] Setting vhost to: %s\n", info.vhost_name);
-    } else {
-        info.vhost_name = NULL;  // Allow connections from any host in development
-    }
-    
-    // Remove the WebSocket mount to allow connections at the root path
-    // info.mounts = &mount_ws;
-    
-    // Add options for working behind a proxy (like Render)
-    info.options = 
-        LWS_SERVER_OPTION_HTTP_HEADERS_SECURITY_BEST_PRACTICES_ENFORCE |
-        LWS_SERVER_OPTION_VALIDATE_UTF8 |
-        LWS_SERVER_OPTION_EXPLICIT_VHOSTS |
-        LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
-    
-    if (is_production) {
-        // Add options specifically for production/proxy environments
-        info.options |= LWS_SERVER_OPTION_ALLOW_NON_SSL_ON_SSL_PORT |
-                        LWS_SERVER_OPTION_ALLOW_LISTEN_SHARE;
-                        
-        // Set up for being behind a reverse proxy
-        info.options |= LWS_SERVER_OPTION_VHOST_UPG_STRICT_HOST_CHECK;
-        
-        // Additional options for Render's proxy setup
-        info.options |= LWS_SERVER_OPTION_HTTP_HEADERS_SECURITY_BEST_PRACTICES_ENFORCE;
-        
-        // Disable strict SSL checking in development
-        info.options |= LWS_SERVER_OPTION_PEER_CERT_NOT_REQUIRED;
-        
-        // Set debug level using the proper API instead of log_level field
-        lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO | LLL_DEBUG, NULL);
-        printf("[WEBSOCKET] Set maximum logging level\n");
-    }
-
-    // Create the context
-    struct lws_context* ws_context = lws_create_context(&info);
-    if (!ws_context) {
-        fprintf(stderr, "WebSocket server creation failed\n");
-        return 1;
-    }
-    set_ws_context(ws_context);
-    
-    // Print detailed information about the WebSocket configuration
-    printf("[WEBSOCKET] Configuration:\n");
-    printf("  - Port: %d\n", ws_port);
-    printf("  - Production mode: %s\n", is_production ? "Yes" : "No");
-    printf("  - Options: 0x%08X\n", (unsigned int)info.options);
-    
-    if (is_production) {
-        printf("[WEBSOCKET] Running in production mode on Render\n");
-        printf("[WEBSOCKET] Using same port as HTTP: %d\n", ws_port);
-        printf("[WEBSOCKET] For WebSocket connections, use: wss://threadflow.onrender.com\n");
-        printf("[WEBSOCKET] Accepting connections from origin: https://thread-flow.vercel.app\n");
-        
-        // Add additional protocol information for debugging
-        printf("[WEBSOCKET] Protocols configured:\n");
-        for (int i = 0; protocols[i].name != NULL; i++) {
-            printf("  - %s\n", protocols[i].name);
-        }
-    } else {
-        printf("[WEBSOCKET] Running in development mode\n");
-        printf("[WEBSOCKET] For WebSocket connections, use: ws://localhost:%d\n", ws_port);
-    }
-
-    printf("[WEBSOCKET] Server started on port %d\n", ws_port);
 
     // Start HTTP server with port binding retry logic
     struct MHD_Daemon *daemon = NULL;
@@ -382,14 +335,12 @@ int main() {
     if (!daemon) {
         fprintf(stderr, "Failed to start HTTP server after %d attempts\n", max_retries);
         fprintf(stderr, "Set HTTP_PORT environment variable to specify an alternative port.\n");
-        lws_context_destroy(get_ws_context());
         queue_destroy(task_queue);
         return 1;
     }
 
     printf("Server started successfully:\n");
     printf("HTTP server running on port %d\n", http_port);
-    printf("WebSocket server running on port %d\n", ws_port);
 
     // Register signal handler for graceful shutdown
     signal(SIGINT, handle_sigint);
@@ -398,7 +349,7 @@ int main() {
     
     // Main event loop
     while (!shutdown_requested) {
-        lws_service(get_ws_context(), 50);
+        // Just sleep, no WebSocket service needed
         usleep(10000);  // 10ms sleep to reduce CPU usage
     }
     
@@ -407,7 +358,6 @@ int main() {
     // Cleanup
     if (daemon) MHD_stop_daemon(daemon);
     
-    lws_context_destroy(get_ws_context());
     destroy_worker_pool(workers, NUM_WORKERS);
     queue_destroy(task_queue);
     

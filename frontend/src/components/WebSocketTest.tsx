@@ -1,148 +1,161 @@
-import { useEffect, useState } from 'react';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { WS_URL, API_URL } from '@/utils/websocket';
+import { useState, useEffect } from 'react';
+import { API_URL } from '@/utils/websocket';
+import { usePolling } from '@/hooks/usePolling';
 
-// Define a type for the server info
-interface ServerInfo {
-  status?: string;
-  websocket_port?: number;
-  http_port?: number;
-  version?: string;
-  cors?: string;
-  websocket_path?: string;
-  environment?: string;
-  uptime?: number;
-  error?: string;
-}
-
-export default function WebSocketTest() {
-  const { socket, connectionStatus, connectionError, reconnectCount } = useWebSocket(WS_URL);
-  const [lastPing, setLastPing] = useState<Date | null>(null);
-  const [serverInfo, setServerInfo] = useState<ServerInfo | null>(null);
+// Rename component to TaskMonitor
+export default function TaskMonitor() {
+  const [lastPing, setLastPing] = useState<string | null>(null);
+  const [serverInfo, setServerInfo] = useState<{
+    http_port?: number;
+    version?: string;
+    cors_enabled?: boolean;
+  } | null>(null);
   const [isCheckingServer, setIsCheckingServer] = useState(false);
+
+  // Use our new polling hook instead of WebSocket
+  const {
+    status: pollingStatus,
+    error: pollingError,
+    retryCount,
+    completedTasks,
+    startPolling,
+    stopPolling,
+    resetPolling
+  } = usePolling();
 
   // Check server health
   useEffect(() => {
     const checkServerHealth = async () => {
+      setIsCheckingServer(true);
       try {
-        setIsCheckingServer(true);
-        const healthUrl = `${API_URL}/health`;
-        console.log(`Checking server health at: ${healthUrl}`);
+        console.log(`[TaskMonitor] Checking server health at ${API_URL}/health`);
+        const response = await fetch(`${API_URL}/health`);
         
-        const response = await fetch(healthUrl);
         if (response.ok) {
           const data = await response.json();
+          console.log('[TaskMonitor] Server health data:', data);
           setServerInfo(data);
-          console.log('Server health check passed:', data);
+          setLastPing(new Date().toISOString());
         } else {
-          console.error('Server health check failed:', response.status);
-          setServerInfo({ error: `HTTP ${response.status}` });
+          console.error(`[TaskMonitor] Server health check failed: ${response.status}`);
+          setServerInfo(null);
         }
       } catch (error) {
-        console.error('Server health check error:', error);
-        setServerInfo({ error: error instanceof Error ? error.message : 'Unknown error' });
+        console.error('[TaskMonitor] Error checking server health:', error);
+        setServerInfo(null);
       } finally {
         setIsCheckingServer(false);
       }
     };
 
+    // Check health immediately and then every 30 seconds
     checkServerHealth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Remove API_URL from dependencies
+    const interval = setInterval(checkServerHealth, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
+  // Start polling when component mounts
   useEffect(() => {
-    if (socket) {
-      const pingInterval = setInterval(() => {
-        try {
-          socket.send(JSON.stringify({ type: 'ping' }));
-          setLastPing(new Date());
-        } catch (error) {
-          console.error('Error sending ping:', error);
-        }
-      }, 30000);
+    startPolling();
+    
+    return () => {
+      stopPolling();
+    };
+  }, [startPolling, stopPolling]);
 
-      return () => clearInterval(pingInterval);
-    }
-  }, [socket]);
-
-  const getStatusColor = () => {
-    switch (connectionStatus) {
-      case 'connected':
-        return 'text-green-500 dark:text-green-400';
-      case 'connecting':
-        return 'text-orange-500 dark:text-orange-400';
-      case 'disconnected':
-        return 'text-red-500 dark:text-red-400';
-    }
-  };
-
-  const handleManualReconnect = () => {
-    if (socket) {
-      socket.close();
-    }
-    // The useWebSocket hook will automatically attempt to reconnect
-  };
+  // Format the last ping time
+  const formattedLastPing = lastPing 
+    ? new Date(lastPing).toLocaleTimeString() 
+    : 'Never';
 
   return (
-    <div className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 p-6">
-      <h3 className="text-3xl font-bold mb-4 text-white">
-        Connection Status
-      </h3>
-      <div className="space-y-4">
-        <p className="text-xl text-white">
-          Status: <span className={`${getStatusColor()} font-semibold`}>
-            {connectionStatus.charAt(0).toUpperCase() + connectionStatus.slice(1)}
+    <div className="p-6 max-w-lg mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-md space-y-4 mt-8">
+      <h2 className="text-2xl font-bold text-purple-600 dark:text-purple-400">Task Monitor</h2>
+      
+      <div className="space-y-2">
+        <p className="text-gray-700 dark:text-gray-300">
+          <span className="font-semibold">API URL:</span> {API_URL}
+        </p>
+        
+        <p className="text-gray-700 dark:text-gray-300">
+          <span className="font-semibold">Polling Status:</span>{' '}
+          <span className={`font-medium ${
+            pollingStatus === 'polling' ? 'text-green-600 dark:text-green-400' : 
+            pollingStatus === 'error' ? 'text-red-600 dark:text-red-400' : 
+            'text-yellow-600 dark:text-yellow-400'
+          }`}>
+            {pollingStatus === 'polling' ? 'Active' : 
+             pollingStatus === 'error' ? 'Error' : 'Idle'}
           </span>
         </p>
         
-        {connectionError && (
-          <p className="text-xl text-red-300">
-            Error: {connectionError}
+        {pollingError && (
+          <p className="text-red-600 dark:text-red-400">
+            <span className="font-semibold">Error:</span> {pollingError}
           </p>
         )}
         
-        <p className="text-xl text-white/70">WebSocket URL: {WS_URL}</p>
-        <p className="text-xl text-white/70">API URL: {API_URL}</p>
+        <p className="text-gray-700 dark:text-gray-300">
+          <span className="font-semibold">Retry Count:</span> {retryCount}
+        </p>
         
-        {reconnectCount > 0 && (
-          <p className="text-xl text-white/70">
-            Reconnection attempts: {reconnectCount}
-          </p>
+        <p className="text-gray-700 dark:text-gray-300">
+          <span className="font-semibold">Last Server Check:</span> {formattedLastPing}
+          {isCheckingServer && <span className="ml-2 text-blue-500">(Checking...)</span>}
+        </p>
+        
+        {serverInfo && (
+          <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mt-2">
+            <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-1">Server Info:</h3>
+            <p className="text-sm text-gray-700 dark:text-gray-300">HTTP Port: {serverInfo.http_port}</p>
+            {serverInfo.version && <p className="text-sm text-gray-700 dark:text-gray-300">Version: {serverInfo.version}</p>}
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              CORS: {serverInfo.cors_enabled ? 'Enabled' : 'Disabled'}
+            </p>
+          </div>
         )}
-        
-        {process.env.NODE_ENV === 'development' && (
-          <p className="text-sm text-white/50 mt-1">
-            Using development URL. Set NEXT_PUBLIC_API_URL in .env.local to override.
-          </p>
-        )}
-        
-        {lastPing && (
-          <p className="text-xl text-white/70">
-            Last Ping: {lastPing.toLocaleTimeString()}
-          </p>
-        )}
-        
-        <div className="mt-4 p-4 bg-black/30 rounded-lg">
-          <h4 className="text-lg font-semibold text-white mb-2">Server Info:</h4>
-          {isCheckingServer ? (
-            <p className="text-white/70">Checking server status...</p>
-          ) : serverInfo?.error ? (
-            <p className="text-red-300">Error: {serverInfo.error}</p>
-          ) : serverInfo ? (
-            <pre className="text-sm text-white/70 overflow-auto">
-              {JSON.stringify(serverInfo, null, 2)}
-            </pre>
-          ) : (
-            <p className="text-white/70">No server information available</p>
-          )}
-        </div>
+      </div>
+      
+      <div className="flex space-x-2">
+        <button
+          onClick={resetPolling}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+        >
+          Reconnect
+        </button>
         
         <button
-          onClick={handleManualReconnect}
-          className="mt-4 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+          onClick={pollingStatus === 'polling' ? stopPolling : startPolling}
+          className={`px-4 py-2 ${
+            pollingStatus === 'polling' 
+              ? 'bg-red-600 hover:bg-red-700' 
+              : 'bg-green-600 hover:bg-green-700'
+          } text-white rounded transition-colors`}
         >
-          Manually Reconnect
+          {pollingStatus === 'polling' ? 'Stop Polling' : 'Start Polling'}
         </button>
+      </div>
+      
+      <div className="mt-6">
+        <h3 className="text-xl font-semibold text-purple-600 dark:text-purple-400 mb-3">Completed Tasks</h3>
+        {completedTasks.length === 0 ? (
+          <p className="text-gray-500 dark:text-gray-400 italic">No completed tasks yet</p>
+        ) : (
+          <ul className="space-y-2">
+            {completedTasks.map(task => (
+              <li key={task.id} className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
+                <p className="font-medium text-gray-800 dark:text-gray-200">{task.data}</p>
+                <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  <span>Priority: {task.priority}</span>
+                  {task.completion_time && (
+                    <span>Completed: {new Date(task.completion_time).toLocaleString()}</span>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

@@ -9,13 +9,16 @@ function TaskForm(props) {
   });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setSuccess(false);
+    setIsSubmitting(true);
 
     try {
+      console.log('[TaskForm] Submitting task:', formData);
       const response = await fetch(`${API_URL}/submit`, {
         method: 'POST',
         headers: {
@@ -33,7 +36,7 @@ function TaskForm(props) {
         throw new Error(data.error || 'Failed to submit task');
       }
 
-      console.log('Task submitted successfully:', data);
+      console.log('[TaskForm] Task submitted successfully:', data);
       setSuccess(true);
       setFormData({ title: '', description: '', priority: 1 });
 
@@ -47,7 +50,10 @@ function TaskForm(props) {
         });
       }
     } catch (err) {
+      console.error('[TaskForm] Error submitting task:', err);
       setError(err.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -68,7 +74,7 @@ function TaskForm(props) {
       )}
       {success && (
         <div className="mb-6 p-4 bg-green-100/80 dark:bg-green-900/30 text-green-700 dark:text-green-100 rounded-lg backdrop-blur-sm">
-          Task submitted successfully!
+          Task submitted successfully! Check the Task Monitor for updates.
         </div>
       )}
       
@@ -121,9 +127,14 @@ function TaskForm(props) {
 
         <button
           type="submit"
-          className="w-full px-6 py-4 text-xl font-medium bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 text-white rounded-xl hover:from-purple-700 hover:via-pink-600 hover:to-orange-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl"
+          disabled={isSubmitting}
+          className={`w-full px-6 py-4 text-xl font-medium ${
+            isSubmitting 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 hover:from-purple-700 hover:via-pink-600 hover:to-orange-600'
+          } text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl`}
         >
-          Create New Thread
+          {isSubmitting ? 'Submitting...' : 'Create New Thread'}
         </button>
       </form>
     </div>

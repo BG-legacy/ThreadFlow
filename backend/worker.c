@@ -7,6 +7,11 @@
 #include "websocket.h"
 #include <json-c/json.h>
 #include <libwebsockets.h>
+#include "worker.h"
+#include <time.h>
+
+// Forward declaration for the add_completed_task function from server.c
+extern void add_completed_task(const char* task_id);
 
 // Worker state
 typedef struct {
@@ -17,55 +22,34 @@ typedef struct {
 } Worker;
 
 // Function to process a task
-void process_task(TaskQueue* queue) {
-    // Get task from queue
-    struct json_object* task = queue_pop(queue);
-    if (!task) {
-        printf("[WORKER] No task to process\n");
+static void process_task(struct json_object* task) {
+    // Extract task ID
+    struct json_object* id_obj;
+    if (!json_object_object_get_ex(task, "id", &id_obj)) {
+        fprintf(stderr, "Task has no ID\n");
         return;
     }
-
-    // Extract task ID and data
-    struct json_object* id_obj;
+    const char* task_id = json_object_get_string(id_obj);
+    
+    // Extract task data
     struct json_object* data_obj;
-    const char* task_id = NULL;
-    
-    if (json_object_object_get_ex(task, "id", &id_obj)) {
-        task_id = json_object_get_string(id_obj);
-        printf("[WORKER] Starting task ID: %s\n", task_id);
-    } else {
-        // Generate a new ID if none exists
-        task_id = json_object_to_json_string(task);
-        printf("[WORKER] Generated task ID: %s\n", task_id);
+    if (!json_object_object_get_ex(task, "data", &data_obj)) {
+        fprintf(stderr, "Task has no data\n");
+        return;
     }
-
-    // Simulate processing with sleep
-    printf("[WORKER] Task %s: Processing for 2 seconds...\n", task_id);
-    sleep(2);
-    printf("[WORKER] Task %s: Processing complete\n", task_id);
-
-    // Create completion notification
-    struct json_object* notification = json_object_new_object();
-    json_object_object_add(notification, "type", json_object_new_string("task_complete"));
-    json_object_object_add(notification, "task_id", json_object_new_string(task_id));
-    json_object_object_add(notification, "status", json_object_new_string("completed"));
-    json_object_object_add(notification, "timestamp", json_object_new_int64(time(NULL)));
-
-    // Convert to string and broadcast
-    const char* notification_str = json_object_to_json_string_ext(notification, JSON_C_TO_STRING_PRETTY);
-    printf("[WORKER] Broadcasting notification:\n%s\n", notification_str);
     
-    // Add explicit length calculation
-    size_t msg_len = strlen(notification_str);
-    printf("[WORKER] Message length: %zu bytes\n", msg_len);
+    // Simulate processing by sleeping
+    int sleep_time = rand() % 3 + 1;  // 1-3 seconds
+    printf("[WORKER] Processing task %s for %d seconds...\n", task_id, sleep_time);
+    sleep(sleep_time);
     
-    // Broadcast with length
-    broadcast_to_clients(notification_str, msg_len);
-    printf("[WORKER] Task %s: Broadcast complete\n", task_id);
-
-    // Cleanup
-    json_object_put(notification);
-    json_object_put(task);
+    // Update task status to completed
+    json_object_object_add(task, "status", json_object_new_string("completed"));
+    
+    printf("[WORKER] Task %s completed\n", task_id);
+    
+    // Notify clients of task completion using the new function
+    add_completed_task(task_id);
 }
 
 // Main worker thread function
@@ -76,10 +60,14 @@ static void* worker_thread(void* arg) {
     
     while (worker->running) {
         // Process the task
-        process_task(worker->queue);
-        
-        // Small sleep to prevent busy-waiting
-        usleep(100000); // 100ms sleep
+        struct json_object* task = queue_pop(worker->queue);
+        if (task) {
+            process_task(task);
+            json_object_put(task);
+        } else {
+            // Small sleep to prevent busy-waiting
+            usleep(100000); // 100ms sleep
+        }
     }
     
     printf("Worker %d stopped\n", worker->worker_id);
