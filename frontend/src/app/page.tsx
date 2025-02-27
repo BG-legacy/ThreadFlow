@@ -29,8 +29,6 @@ export default function Home() {
   // Handle completed tasks from polling
   useEffect(() => {
     if (completedTasks && completedTasks.length > 0) {
-      console.log('Received completed tasks:', completedTasks);
-      
       setTasks(prev => {
         const updatedTasks = [...prev];
         
@@ -56,7 +54,6 @@ export default function Home() {
           }
         });
         
-        console.log('Updated tasks:', updatedTasks);
         return updatedTasks;
       });
     }
@@ -101,146 +98,128 @@ export default function Home() {
       setNewTask('');
       setPriority(1);
       setSuccess(true);
-
-      // Trigger animation for new task
-      const taskElement = document.getElementById(`task-${task.id}`);
-      if (taskElement) {
-        taskElement.classList.add('task-enter');
-      }
+      
+      setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to submit task');
+      setTimeout(() => setError(null), 3000);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <main className="min-h-screen py-12 px-4">
-      <div className="container">
-        <h1 className="text-7xl font-bold mb-8 font-geist-sans text-center text-white">
-          ThreadFlow
-        </h1>
-        
-        {/* Task Monitor */}
-        <div className="mb-8">
-          <TaskMonitor />
-        </div>
-        
-        <div className="mb-8 p-8 rounded-xl bg-gradient-to-br from-purple-600/30 via-pink-500/30 to-orange-500/30 backdrop-blur-lg border border-white/20">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-2xl font-medium text-white mb-3">
-                Task Description:
-              </label>
-              <input
-                type="text"
-                value={newTask}
-                onChange={(e) => setNewTask(e.target.value)}
-                className="w-full text-xl p-4 bg-white/10 border-white/20 rounded-lg focus:ring-2 focus:ring-white/50 focus:border-white/50 text-white placeholder-white/50"
-                required
-              />
+    <main className="min-h-screen py-6 px-4">
+      <div className="container max-w-4xl mx-auto">
+        <div className="flex flex-col md:flex-row md:gap-6">
+          {/* Left column - Task Monitor and Form */}
+          <div className="w-full md:w-1/2">
+            <h1 className="text-4xl font-bold mb-4 font-geist-sans text-center text-white">
+              ThreadFlow
+            </h1>
+            
+            {/* Task Monitor */}
+            <div className="mb-4">
+              <TaskMonitor />
             </div>
             
-            <div>
-              <label className="block text-2xl font-medium text-white mb-3">
-                Priority (1-10):
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="10"
-                value={priority}
-                onChange={(e) => setPriority(Number(e.target.value))}
-                className="w-full text-xl p-4 bg-white/10 border-white/20 rounded-lg focus:ring-2 focus:ring-white/50 focus:border-white/50 text-white"
-              />
-            </div>
-            
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full px-6 py-4 text-xl font-medium bg-white/20 hover:bg-white/30 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? 'Adding Thread...' : 'Add Thread'}
-            </button>
-          </form>
-        </div>
-
-        {error && (
-          <div className="mb-4 p-4 text-red-500 bg-red-100 rounded-lg">
-            {error}
-          </div>
-        )}
-        
-        {success && (
-          <div className="mb-4 p-4 text-green-500 bg-green-100 rounded-lg">
-            Task added successfully!
-          </div>
-        )}
-
-        <div className="p-8 rounded-xl bg-gradient-to-br from-purple-600/30 via-pink-500/30 to-orange-500/30 backdrop-blur-lg border border-white/20">
-          <h2 className="text-4xl font-bold mb-8 text-white">
-            Active Threads
-          </h2>
-          {tasks.length === 0 ? (
-            <p className="text-2xl text-white/70 text-center py-12">
-              No threads yet. Start one above!
-            </p>
-          ) : (
-            <div className="space-y-6">
-              {tasks.map(task => (
-                <div
-                  key={task.id}
-                  id={`task-${task.id}`}
-                  className={`p-6 rounded-xl border border-white/20 transition-all duration-500 ${
-                    task.status === 'completed' 
-                      ? 'bg-white/10' 
-                      : 'bg-white/5'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="text-2xl font-medium text-white">
-                      {task.data}
-                    </p>
-                    <span className={`px-4 py-2 rounded-full text-xl font-medium ${
-                      task.status === 'completed'
-                        ? 'bg-green-500/20 text-white'
-                        : 'bg-orange-500/20 text-white'
-                    }`}>
-                      {task.status === 'completed' ? (
-                        <span className="flex items-center">
-                          <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                          </svg>
-                          Completed
-                        </span>
-                      ) : (
-                        <span className="flex items-center">
-                          <svg className="w-5 h-5 mr-1 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                          </svg>
-                          Pending
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex items-center mt-3 text-white/70">
-                    <div className="flex items-center mr-6">
-                      <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                      </svg>
-                      <span>Priority: {task.priority}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"></path>
-                      </svg>
-                      <span>ID: {task.id.split('_').pop()}</span>
-                    </div>
-                  </div>
+            {/* Task Form */}
+            <div className="p-4 rounded-xl bg-gradient-to-br from-purple-600/30 via-pink-500/30 to-orange-500/30 backdrop-blur-lg border border-white/20">
+              <form onSubmit={handleSubmit} className="space-y-3">
+                <div>
+                  <label className="block text-lg font-medium text-white mb-1">
+                    Task Description:
+                  </label>
+                  <input
+                    type="text"
+                    value={newTask}
+                    onChange={(e) => setNewTask(e.target.value)}
+                    className="w-full p-2 bg-white/10 border-white/20 rounded-lg focus:ring-2 focus:ring-white/50 focus:border-white/50 text-white placeholder-white/50"
+                    required
+                  />
                 </div>
-              ))}
+                
+                <div>
+                  <label className="block text-lg font-medium text-white mb-1">
+                    Priority (1-10):
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={priority}
+                    onChange={(e) => setPriority(Number(e.target.value))}
+                    className="w-full p-2 bg-white/10 border-white/20 rounded-lg focus:ring-2 focus:ring-white/50 focus:border-white/50 text-white"
+                  />
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full px-4 py-2 font-medium bg-white/20 hover:bg-white/30 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? 'Adding...' : 'Add Thread'}
+                </button>
+              </form>
+              
+              {error && (
+                <div className="mt-3 p-2 text-sm text-red-500 bg-red-100 rounded-lg">
+                  {error}
+                </div>
+              )}
+              
+              {success && (
+                <div className="mt-3 p-2 text-sm text-green-500 bg-green-100 rounded-lg">
+                  Task added successfully!
+                </div>
+              )}
             </div>
-          )}
+          </div>
+          
+          {/* Right column - Active Threads */}
+          <div className="w-full md:w-1/2 mt-6 md:mt-0">
+            <div className="p-4 rounded-xl bg-gradient-to-br from-purple-600/30 via-pink-500/30 to-orange-500/30 backdrop-blur-lg border border-white/20 h-full">
+              <h2 className="text-2xl font-bold mb-4 text-white">
+                Active Threads
+              </h2>
+              
+              {tasks.length === 0 ? (
+                <p className="text-white/70 text-center py-4">
+                  No threads yet. Start one on the left!
+                </p>
+              ) : (
+                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                  {tasks.map(task => (
+                    <div
+                      key={task.id}
+                      className={`p-3 rounded-lg border border-white/20 transition-all duration-300 ${
+                        task.status === 'completed' 
+                          ? 'bg-white/10' 
+                          : 'bg-white/5'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-lg font-medium text-white truncate max-w-[70%]">
+                          {task.data}
+                        </p>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          task.status === 'completed'
+                            ? 'bg-green-500/20 text-white'
+                            : 'bg-orange-500/20 text-white'
+                        }`}>
+                          {task.status === 'completed' ? 'Done' : 'Pending'}
+                        </span>
+                      </div>
+                      <div className="flex items-center mt-1 text-xs text-white/70">
+                        <span className="mr-3">Priority: {task.priority}</span>
+                        <span>ID: {task.id.substring(0, 6)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </main>
