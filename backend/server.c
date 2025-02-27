@@ -206,7 +206,7 @@ static enum MHD_Result handle_request(void *cls, struct MHD_Connection *connecti
     }
 
     // New endpoint for polling completed tasks
-    if (strcmp(method, "GET") == 0 && strcmp(url, "/completed-tasks") == 0) {
+    if (strcmp(method, "GET") == 0 && strcmp(url, "/completed_tasks") == 0) {
         // Create JSON array of completed tasks
         struct json_object *tasks_array = json_object_new_array();
         
@@ -227,14 +227,14 @@ static enum MHD_Result handle_request(void *cls, struct MHD_Connection *connecti
             }
             
             struct json_object *task = json_object_new_object();
-            json_object_object_add(task, "task_id", json_object_new_string(completed_tasks[idx].task_id));
+            json_object_object_add(task, "id", json_object_new_string(completed_tasks[idx].task_id));
             json_object_object_add(task, "completion_time", json_object_new_int64(completed_tasks[idx].completion_time));
             json_object_array_add(tasks_array, task);
         }
         
         // Create response object
         struct json_object *response_obj = json_object_new_object();
-        json_object_object_add(response_obj, "completed_tasks", tasks_array);
+        json_object_object_add(response_obj, "tasks", tasks_array);
         json_object_object_add(response_obj, "server_time", json_object_new_int64(time(NULL)));
         
         const char *response_str = json_object_to_json_string(response_obj);
@@ -242,7 +242,7 @@ static enum MHD_Result handle_request(void *cls, struct MHD_Connection *connecti
                                                  (void*)response_str,
                                                  MHD_RESPMEM_MUST_COPY);
         MHD_add_response_header(response, "Content-Type", "application/json");
-        MHD_add_response_header(response, "Access-Control-Allow-Origin", "https://thread-flow.vercel.app");
+        MHD_add_response_header(response, "Access-Control-Allow-Origin", "*");
         ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
         MHD_destroy_response(response);
         json_object_put(response_obj);
