@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePolling } from '@/hooks/usePolling';
 import { API_URL } from '@/utils/websocket';
+import Link from 'next/link';
 
 interface Task {
   id: string;
@@ -120,9 +121,17 @@ export default function Home() {
   return (
     <main className="min-h-screen py-12 px-4">
       <div className="container">
-        <h1 className="text-7xl font-bold mb-12 font-geist-sans text-center text-white">
-          ThreadFlow
-        </h1>
+        <div className="flex justify-between items-center mb-12">
+          <h1 className="text-7xl font-bold font-geist-sans text-center text-white">
+            ThreadFlow
+          </h1>
+          <Link 
+            href="/monitor" 
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+          >
+            Task Monitor
+          </Link>
+        </div>
         
         {/* System Visualization */}
         <div className="mb-12 p-6 rounded-xl bg-gradient-to-br from-purple-600/20 via-pink-500/20 to-orange-500/20 backdrop-blur-lg border border-white/20">
