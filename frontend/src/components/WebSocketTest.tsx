@@ -240,7 +240,7 @@ export default function TaskMonitor() {
             {/* Task Timeline */}
             <div className="relative pb-12">
               <div className="absolute h-full w-0.5 bg-gray-200 dark:bg-gray-700 left-2.5 top-0"></div>
-              {completedTasks.map((task, index) => (
+              {completedTasks.map((task) => (
                 <div key={task.id} className="relative pl-8 pb-6">
                   <div className="absolute left-0 top-1 w-5 h-5 rounded-full bg-purple-500 dark:bg-purple-400 z-10"></div>
                   <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
