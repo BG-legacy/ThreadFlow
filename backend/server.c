@@ -2,6 +2,7 @@
 #include <microhttpd.h>
 #include <json-c/json.h>
 #include <string.h>
+#include <stdio.h>    // Add this for printf, fprintf, snprintf
 #include <signal.h>
 #include <unistd.h>  // Add this for usleep
 #include <time.h>    // Add this for time()
@@ -34,8 +35,8 @@ static struct {
 static int completed_task_count = 0;
 static int completed_task_index = 0;
 
-// Add task to completed tasks list instead of broadcasting
-static void add_completed_task(const char* task_id) {
+// Function to add a completed task to the list
+void add_completed_task(const char* task_id) {
     time_t now = time(NULL);
     
     // Add to circular buffer

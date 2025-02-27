@@ -13,14 +13,6 @@
 // Forward declaration for the add_completed_task function from server.c
 extern void add_completed_task(const char* task_id);
 
-// Worker state
-typedef struct {
-    pthread_t thread;          // Thread handle
-    TaskQueue* queue;         // Reference to task queue
-    bool running;             // Worker running flag
-    int worker_id;           // Unique worker identifier
-} Worker;
-
 // Function to process a task
 static void process_task(struct json_object* task) {
     // Extract task ID

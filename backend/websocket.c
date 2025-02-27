@@ -39,14 +39,14 @@ int ws_callback(struct lws *wsi, enum lws_callback_reasons reason,
             // Check if we're behind a proxy - using compatible API
             char forwarded_for[256] = {0};
             if (lws_hdr_copy(wsi, forwarded_for, sizeof(forwarded_for), 
-                           LWS_HEADER_X_FORWARDED_FOR) > 0) {
+                           WSI_TOKEN_X_FORWARDED_FOR) > 0) {
                 printf("[WEBSOCKET] X-Forwarded-For: %s\n", forwarded_for);
             }
             
             // Check the origin - using compatible API
             char origin[256] = {0};
             if (lws_hdr_copy(wsi, origin, sizeof(origin), 
-                           LWS_HEADER_ORIGIN) > 0) {
+                           WSI_TOKEN_ORIGIN) > 0) {
                 printf("[WEBSOCKET] Origin: %s\n", origin);
                 
                 // Accept connections from Vercel frontend
